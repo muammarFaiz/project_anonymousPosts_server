@@ -13,7 +13,7 @@ const secretSchema = new mongoose.Schema({
     maxlength: 400
   },
   vote_count: {
-    type: Number,
+    type: mongoose.Schema.Types.Mixed,
     default: 'init'
   },
   date_created: {

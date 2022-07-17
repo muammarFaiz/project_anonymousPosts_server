@@ -86,6 +86,9 @@ router.post('/usersecrets', verifyToken, async (req, res) => {
 
     const totalPages = Math.ceil(secretNumbers.length / docPerPage)
     if(ondemandPage > totalPages || ondemandPage < 1) {
+      if(totalPages < 1) {
+        return res.send('empty')
+      }
       return res.json({error: 'demanded page does not exist'})
     }
     arrayOfPagesInThisGroup = formPageArr(totalPages, pagePerGroup, ondemandPage)
