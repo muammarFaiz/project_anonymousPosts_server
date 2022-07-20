@@ -4,23 +4,28 @@ const { paginationModel } = require('../user/userModel')
 const { verifyToken } = require('../user/userRoute')
 const formPageArr = require('./postUtils')
 const { secretModel } = require('./secretModel')
+const createDOMPurify = require('dompurify')
+const {JSDOM} = require('jsdom')
 
 const c = console.log
+const window = new JSDOM('').window
+const DOMPurify = createDOMPurify(window)
 
 router.post('/postsecret',
   [
-    body('content').isLength({min: 1, max: 400}).withMessage('content length invalid').escape()
+    body('content').isLength({min: 1, max: 400}).withMessage('content length invalid')
   ],
   verifyToken,
   async (req, res) => {
   c(req.body)
   const errors = validationResult(req)
   if(!errors.isEmpty()) {
-    return res.status(400).json({errors: errors.array()})
+    return res.json({errors: errors.array()})
   }
+  const purified = DOMPurify.sanitize(req.body.content)
   const newDoc = new secretModel({
     creatorId: req.theUserDoc._id,
-    content: req.body.content
+    content: purified
   })
   const result = await newDoc.save()
   c(result)
