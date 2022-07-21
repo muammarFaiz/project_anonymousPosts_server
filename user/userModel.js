@@ -37,14 +37,12 @@ const userSchema = new mongoose.Schema({
     // is default run everytime a user is modified or not???
   },
   profileImage: {
-    fieldname: String,
     originalname: String,
-    encoding: String,
     mimetype: String,
     buffer: Buffer,
-    size: Number
-  },
-  testBuffer: mongoose.Schema.Types.Mixed
+    size: Number,
+    lastmodified: Number
+  }
 })
 
 const paginationModel = mongoose.model('pagination', new mongoose.Schema({
