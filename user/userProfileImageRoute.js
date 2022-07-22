@@ -1,5 +1,8 @@
 const router = require('express').Router()
 const { verifyToken } = require('./userRoute');
+const multer = require('multer')
+
+const upload = multer()
 
 router.post('/profileImg', verifyToken, async (req, res) => {
   const b64 = req.body.img.base64.split(',').slice(1).join('')

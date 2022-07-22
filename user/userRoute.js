@@ -104,7 +104,12 @@ const verifyToken = async (req, res, next) => {
 }
 
 router.get('/verifytoken', verifyToken, async (req, res) => {
-  return res.send('ok')
+  const {
+    _id, jwt_token, unhashed_password,
+    hashed_password, counter, __v, profileImage,
+    ...public
+  } = req.theUserDoc._doc
+  return res.json({status: 'ok', userinfo: public})
 })
 
 router.get('/logout', async (req, res) => {
