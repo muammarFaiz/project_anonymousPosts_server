@@ -26,6 +26,10 @@ const secretSchema = new mongoose.Schema({
   n: {
     type: Number,
     immutable: true
+  },
+  audio: {
+    buffer: Buffer,
+    mimetype: String
   }
 })
 

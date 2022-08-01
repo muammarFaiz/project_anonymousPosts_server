@@ -1,7 +1,8 @@
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
-const {userModel} = require('./userModel')
+// const {userModel} = require('./userModel')
 const bcrypt = require('bcrypt')
+const utils = require('./userUtils')()
 
 const c = console.log;
 
@@ -9,7 +10,8 @@ passport.use(new LocalStrategy({usernameField: 'email'}, async (email, password,
   c('authentication running...')
   let user;
   try {
-    user = await userModel.findOne({email: email})
+    // user = await userModel.findOne({email: email})
+    user = await utils.findByEmail(email)
   } catch (error) {
     c('error in findOne')
     c(error)
@@ -31,6 +33,7 @@ passport.use(new LocalStrategy({usernameField: 'email'}, async (email, password,
 }))
 passport.serializeUser((user, done) => done(null, user._id))
 passport.deserializeUser(async (id, done) => {
-  const user = await userModel.findById(id)
+  // const user = await userModel.findById(id)
+  const user = await utils.findUserById(id)
   done(null, user)
 })

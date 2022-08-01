@@ -1,67 +1,99 @@
 const router = require('express').Router()
-const { body, validationResult } = require('express-validator')
-const { paginationModel } = require('../user/userModel')
+// const { body, validationResult } = require('express-validator')
+// const { paginationModel } = require('../user/userModel')
 const { verifyToken } = require('../user/userRoute')
 const formPageArr = require('./postUtils')
-const { secretModel } = require('./secretModel')
+// const { secretModel } = require('./secretModel')
 const createDOMPurify = require('dompurify')
 const {JSDOM} = require('jsdom')
+const multer = require('multer')
+const utils = require('./secretUtils')()
 
 const c = console.log
 const window = new JSDOM('').window
 const DOMPurify = createDOMPurify(window)
+const upload = multer()
 
+// rewrite the whole mongoose with mongodb native driver
 router.post('/postsecret',
-  [
-    body('content').isLength({min: 1, max: 400}).withMessage('content length invalid')
-  ],
-  verifyToken,
-  async (req, res) => {
-  c(req.body)
-  const errors = validationResult(req)
-  if(!errors.isEmpty()) {
-    return res.json({errors: errors.array()})
-  }
-  const purified = DOMPurify.sanitize(req.body.content)
-  const newDoc = new secretModel({
-    creatorId: req.theUserDoc._id,
-    content: purified
+  // [
+  //   body('content').isLength({min: 1, max: 400}).withMessage('content length invalid')
+  // ],
+  verifyToken, upload.single('audiobuffer'), async (req, res) => {
+    // const errors = validationResult(req)
+    // if(!errors.isEmpty()) {
+    //   return res.json({errors: errors.array()})
+    // }
+    const purified = DOMPurify.sanitize(req.body.content)
+    let newDoc;
+    if(req.file) {
+      // newDoc = new secretModel({
+      //   creatorId: req.theUserDoc._id,
+      //   content: purified,
+      //   audio: {
+      //     buffer: req.file.buffer,
+      //     mimetype: req.file.mimetype
+      //   }
+      // })
+      newDoc = {
+        creatorId: req.theUserDoc._id,
+        content: purified,
+        audio: {
+          buffer: req.file.buffer,
+          mimetype: req.file.mimetype
+        }
+      }
+    } else {
+      // newDoc = new secretModel({
+      //   creatorId: req.theUserDoc._id,
+      //   content: purified
+      // })
+      newDoc = {
+        creatorId: req.theUserDoc._id,
+        content: purified
+      }
+    }
+    // const result = await newDoc.save()
+    // c(result)
+    const result = await utils.insertOneSecret(newDoc)
+    if(result.error) return res.json(result)
+    console.log(newDoc);
+    return res.send('ok')
   })
-  const result = await newDoc.save()
-  c(result)
-  return res.send('ok')
-})
+
 // router deletesecret accepts secret number to delete
 router.post('/deletesecret',
   verifyToken,
   async (req, res) => {
     const secretN = req.body.secretNumber
-    const numberArr = await paginationModel.findOne({userid: req.theUserDoc._id})
-    const secretIndex = numberArr.secret_numbers.indexOf(secretN)
-    if(!secretIndex || secretIndex === -1) {
-      c(secretIndex)
-      return res.send('secret number not found')
-    }
-    // update the number array doc
-    numberArr.secret_numbers.splice(secretIndex, 1)
-    const updatedNumberArr = await numberArr.save()
-    c(updatedNumberArr)
-    const deletedSecretResult = await secretModel.findOneAndDelete({creatorId: req.theUserDoc._id, n: secretN})
-    c(deletedSecretResult)
-    return res.send('ok')
+    // const numberArr = await paginationModel.findOne({userid: req.theUserDoc._id})
+    // const secretIndex = numberArr.secret_numbers.indexOf(secretN)
+    // if(!secretIndex || secretIndex === -1) {
+    //   c(secretIndex)
+    //   return res.send('secret number not found')
+    // }
+    // // update the number array doc
+    // numberArr.secret_numbers.splice(secretIndex, 1)
+    // const updatedNumberArr = await numberArr.save()
+    // c(updatedNumberArr)
+    // const deletedSecretResult = await secretModel.findOneAndDelete({creatorId: req.theUserDoc._id, n: secretN})
+    // c(deletedSecretResult)
+    const result = await utils.deleteSecret(req.theUserDoc._id, secretN)
+    return res.json(result)
   })
 
 router.get('/getsecrets', async (req, res) => {
   const idIndex = req.query.idIndex
   const limit = req.query.limit || 10
-  let secrets;
-  if(!idIndex) {
-    secrets = await secretModel.find().sort({_id: -1}).limit(limit)
-  } else {
-    secrets = await secretModel.find({_id: {$lt: idIndex}}).sort({_id: -1}).limit(limit)
-    // even if the doc that have the idindex is already deleted, its id can still be used
-  }
-  res.json({result: secrets})
+  // let secrets;
+  // if(!idIndex) {
+  //   secrets = await secretModel.find().sort({_id: -1}).limit(limit)
+  // } else {
+  //   secrets = await secretModel.find({_id: {$lt: idIndex}}).sort({_id: -1}).limit(limit)
+  //   // even if the doc that have the idindex is already deleted, its id can still be used
+  // }
+  const result = await utils.getSecret_forhomepage(idIndex, limit)
+  res.json(result)
 })
 
 router.post('/usersecrets', verifyToken, async (req, res) => {
@@ -75,7 +107,8 @@ router.post('/usersecrets', verifyToken, async (req, res) => {
   let arrayOfPagesInThisGroup = []
 
   if(paginationMode === 'on demand') {
-    const paginationDoc = await paginationModel.findOne({userid: userid})
+    // const paginationDoc = await paginationModel.findOne({userid: userid})
+    const paginationDoc = await utils.getPaginationByID(userid)
     const secretNumbers = paginationDoc.secret_numbers
     c(secretNumbers)
     // const skips = (ondemandPage - 1) * docPerPage
@@ -85,9 +118,10 @@ router.post('/usersecrets', verifyToken, async (req, res) => {
     c(sliceCount);
     const numbersInOnePage = secretNumbers.slice(nonNegativeSkip, nonNegativeSkip + sliceCount)
     c(numbersInOnePage);
-    secrets = await secretModel.find({
-      creatorId: userid, n: {$in: numbersInOnePage}
-    }).sort({_id: -1})
+    // secrets = await secretModel.find({
+    //   creatorId: userid, n: {$in: numbersInOnePage}
+    // }).sort({_id: -1})
+    secrets = await utils.getusersecret_byN(userid, numbersInOnePage)
 
     const totalPages = Math.ceil(secretNumbers.length / docPerPage)
     if(ondemandPage > totalPages || ondemandPage < 1) {
@@ -100,13 +134,15 @@ router.post('/usersecrets', verifyToken, async (req, res) => {
 
   } else {
     if(idIndex) {
-      secrets = await secretModel.find({creatorId: userid, _id: {$gt: idIndex}})
-      .sort({_id: -1})
-      .limit(docPerPage)
+      // secrets = await secretModel.find({creatorId: userid, _id: {$gt: idIndex}})
+      // .sort({_id: -1})
+      // .limit(docPerPage)
+      secrets = await utils.getusersecret_byIDIndex(userid, idIndex, docPerPage)
     } else {
-      secrets = await secretModel.find({creatorId: userid})
-      .sort({_id: -1})
-      .limit(docPerPage)
+      // secrets = await secretModel.find({creatorId: userid})
+      // .sort({_id: -1})
+      // .limit(docPerPage)
+      secrets = await utils.getusersecret_byIDIndex(userid, undefined, docPerPage)
     }
   }
   return res.json({
@@ -120,7 +156,8 @@ router.get('/vote', verifyToken, async (req, res) => {
   const id = req.query.id
   let secret
   try {
-    secret = await secretModel.findById(id)
+    // secret = await secretModel.findById(id)
+    secret = await utils.getSecretById_forVote(id)
   } catch (error) {
     return res.json({error: error.message})
   }
@@ -136,7 +173,8 @@ router.get('/vote', verifyToken, async (req, res) => {
   } else {
     secret.vote_count = secret.vote_count - 1
   }
-  const result = await secret.save()
+  // const result = await secret.save()
+  const result = await utils.updateSecret(id, secret)
   c(result)
   return res.send('ok')
 })
