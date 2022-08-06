@@ -4,7 +4,6 @@ const session = require('express-session');
 const cors = require('cors');
 // require('./mongooseConfig')
 require('./mongodbnativeconfig')
-// now the mongodb native driver is configured, now replace the requests on all routes
 require('./user/passportLocalStrategy')
 const routes = require('./routes')
 

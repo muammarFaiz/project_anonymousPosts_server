@@ -14,7 +14,6 @@ const window = new JSDOM('').window
 const DOMPurify = createDOMPurify(window)
 const upload = multer()
 
-// rewrite the whole mongoose with mongodb native driver
 router.post('/postsecret',
   // [
   //   body('content').isLength({min: 1, max: 400}).withMessage('content length invalid')
