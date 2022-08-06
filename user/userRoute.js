@@ -162,6 +162,10 @@ router.post('/changeusername', verifyToken, async (req, res) => {
   return res.json({status: 'ok'})
 })
 
+router.get('/testme', (req, res) => {
+  res.send('ok faiz')
+})
+
 module.exports = {
   verifyToken,
   userRouter: router
