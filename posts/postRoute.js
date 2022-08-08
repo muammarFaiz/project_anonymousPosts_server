@@ -1,5 +1,5 @@
 const router = require('express').Router()
-// const { body, validationResult } = require('express-validator')
+const { body, validationResult } = require('express-validator')
 // const { paginationModel } = require('../user/userModel')
 const { verifyToken } = require('../user/userRoute')
 const formPageArr = require('./postUtils')
@@ -15,14 +15,14 @@ const DOMPurify = createDOMPurify(window)
 const upload = multer()
 
 router.post('/postsecret',
-  // [
-  //   body('content').isLength({min: 1, max: 400}).withMessage('content length invalid')
-  // ],
+  [
+    body('content').isLength({max: 400}).withMessage('content length invalid')
+  ],
   verifyToken, upload.single('audiobuffer'), async (req, res) => {
-    // const errors = validationResult(req)
-    // if(!errors.isEmpty()) {
-    //   return res.json({errors: errors.array()})
-    // }
+    const errors = validationResult(req)
+    if(!errors.isEmpty()) {
+      return res.json({errors: errors.array()})
+    }
     const purified = DOMPurify.sanitize(req.body.content)
     let newDoc;
     if(req.file) {
