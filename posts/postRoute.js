@@ -15,14 +15,18 @@ const DOMPurify = createDOMPurify(window)
 const upload = multer()
 
 router.post('/postsecret',
-  [
-    body('content').isLength({max: 400}).withMessage('content length invalid')
-  ],
+  // [
+  //   // the isLength is broken, if min = 0 then max will not be accepted, if min > 0 then it will always return
+  //   // error
+  //   body('content').isLength({min: 1, max: 10}).withMessage('content length invalid')
+  // ],
   verifyToken, upload.single('audiobuffer'), async (req, res) => {
-    const errors = validationResult(req)
-    if(!errors.isEmpty()) {
-      return res.json({errors: errors.array()})
-    }
+    // const errors = validationResult(req)
+    // if(!errors.isEmpty()) {
+    //   return res.json({errors: errors.array()})
+    // }
+    if(!req.body.content && !req.file) return res.json({errors: 'nothing to save'})
+    if(req.body.content.length > 500) return res.json({errors: 'content too long'})
     const purified = DOMPurify.sanitize(req.body.content)
     let newDoc;
     if(req.file) {
