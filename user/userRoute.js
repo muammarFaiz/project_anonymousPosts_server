@@ -119,8 +119,8 @@ const verifyToken = async (req, res, next) => {
 
 router.get('/verifytoken', verifyToken, async (req, res) => {
   const {
-    _id, jwt_token, unhashed_password,
-    hashed_password, counter, __v, profileImage,
+    jwt_token, unhashed_password,
+    hashed_password, counter, __v,
     ...public
   } = req.theUserDoc
   return res.json({status: 'ok', userinfo: public})
@@ -160,6 +160,17 @@ router.post('/changeusername', verifyToken, async (req, res) => {
   const result = await utils.changeUsername(newUsername, req.theUserDoc._id)
   if(result.error) return res.json(result)
   return res.json({status: 'ok'})
+})
+
+router.post('/changebio', verifyToken, async (req, res) => {
+  console.log(req.body.newbio)
+  if(req.body.newbio !== undefined) {
+    const result = await utils.updateUserBio(req.body.newbio, req.theUserDoc._id)
+    if(result.error) return res.json(result)
+    res.send('ok')
+  } else {
+    res.json({error: 'no bio found'})
+  }
 })
 
 router.get('/testme', (req, res) => {

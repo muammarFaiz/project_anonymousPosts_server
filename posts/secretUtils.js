@@ -5,6 +5,18 @@ const userColl = require('../mongodbnativeconfig').collection('users')
 const paginationColl = require('../mongodbnativeconfig').collection('paginations')
 
 const secretUtils = () => {
+  const projectionforsecrets = {'comment.creator': 0, 'comment.content': 0}
+
+  const idfier = (id) => {
+    if(typeof(id) === 'string') {
+      try {
+        return ObjectId(id)
+      } catch (e) {
+        return {error: 'not an id'}
+      }
+    }
+    return id
+  }
 
   const dateCreator = () => {
     const d = new Date();
@@ -17,7 +29,9 @@ const secretUtils = () => {
    * @returns if fail throw error or {error: 'something'}, else return the result of secretColl.insertOne
    */
   const insertOneSecret = async (doc) => {
-    let useridobj = typeof(doc.creatorId) === 'string' ? ObjectId(doc.creatorId) : doc.creatorId
+    const useridobj = idfier(doc.creatorId)
+    if(useridobj.error) return useridobj
+    // let useridobj = typeof(doc.creatorId) === 'string' ? ObjectId(doc.creatorId) : doc.creatorId
 
     // update user secret counter
     const user = await userColl.updateOne({_id: useridobj}, {$inc: {counter: 1}})
@@ -44,7 +58,9 @@ const secretUtils = () => {
    * @returns 'ok' if success, throw Error or {error: 'somehing'} if fail
    */
   const deleteSecret = async (userid, secretNumber) => {
-    let user_objectId = typeof(userid) === 'string' ? ObjectId(userid) : userid
+    const user_objectId = idfier(userid)
+    if(user_objectId.error) return user_objectId
+    // let user_objectId = typeof(userid) === 'string' ? ObjectId(userid) : userid
     // remove one number in pagination
     const response = await paginationColl.updateOne({userid: user_objectId}, {$pull: {secret_numbers: secretNumber}})
     if(!response.acknowledged) return {error: 'unnkown pagination update fail'}
@@ -65,12 +81,14 @@ const secretUtils = () => {
    */
   const getSecret_forhomepage = async (idIndex, limit) => {
     let secrets
-    const objectid_index = typeof(idIndex) === 'string' ? ObjectId(idIndex) : idIndex
     if (!idIndex) {
-      secrets = await secretColl.find({}, {sort: {_id: -1}, limit: limit}).toArray()
+      secrets = await secretColl.find({}, {sort: {_id: -1}, limit: limit, projection: projectionforsecrets}).toArray()
     } else {
+      const objectid_index = idfier(idIndex)
+      if(objectid_index.error) return objectid_index
+      // const objectid_index = typeof(idIndex) === 'string' ? ObjectId(idIndex) : idIndex
       // even if the doc that have the idindex is already deleted, its id can still be used (mongodb feature)
-      secrets = await secretColl.find({_id: {$lt: objectid_index}}, {sort: {_id: -1}, limit: limit}).toArray()
+      secrets = await secretColl.find({_id: {$lt: objectid_index}}, {sort: {_id: -1}, limit: limit, projection: projectionforsecrets}).toArray()
     }
     return {result: secrets}
   }
@@ -81,48 +99,159 @@ const secretUtils = () => {
    * @returns result of paginationColl.findOne
    */
   const getPaginationByID = async (userid) => {
-    objectid_user = typeof(userid) === 'string' ? ObjectId(userid) : userid
+    const objectid_user = idfier(userid)
+    if(objectid_user.error) return objectid_user
+    // objectid_user = typeof(userid) === 'string' ? ObjectId(userid) : userid
     const result = await paginationColl.findOne({userid: objectid_user})
     return result
   }
-
+  
   const getusersecret_byN = async (userid, nArray) => {
-    const objectid_user = typeof(userid) === 'string' ? ObjectId(userid) : userid
-    const result = await secretColl.find({creatorId: objectid_user, n: {$in: nArray}}, {sort: {_id: -1}}).toArray()
-    return result
+  const objectid_user = idfier(userid)
+  if(objectid_user.error) return objectid_user
+  // const objectid_user = typeof(userid) === 'string' ? ObjectId(userid) : userid
+  const result = await secretColl.find({creatorId: objectid_user, n: {$in: nArray}}, {sort: {_id: -1}, projection: projectionforsecrets}).toArray()
+  return result
   }
-
+  
   const getusersecret_byIDIndex = async (userid, idIndex, docperpage) => {
-    const objectid_user = typeof(userid) === 'string' ? ObjectId(userid) : userid
-    const objectid_index = typeof(idIndex) === 'string' ? ObjectId(idIndex) : idIndex
+    const objectid_user = idfier(userid)
+    if(objectid_user.error) return objectid_user
+    // const objectid_user = typeof(userid) === 'string' ? ObjectId(userid) : userid
     let result
     if(idIndex) {
-      result = await secretColl.find({creatorId: objectid_user, _id: {$lt: objectid_index}}, {sort: {_id: -1}, limit: docperpage}).toArray()
+      const objectid_index = idfier(idIndex)
+      if(objectid_index.error) return objectid_index
+      // const objectid_index = typeof(idIndex) === 'string' ? ObjectId(idIndex) : idIndex
+      result = await secretColl.find({creatorId: objectid_user, _id: {$lt: objectid_index}}, {sort: {_id: -1}, limit: docperpage, projection: projectionforsecrets}).toArray()
     } else {
-      result = await secretColl.find({creatorId: objectid_user}, {sort: {_id: -1}, limit: docperpage}).toArray()
+      result = await secretColl.find({creatorId: objectid_user}, {sort: {_id: -1}, limit: docperpage, projection: projectionforsecrets}).toArray()
     }
     return result
   }
 
   const getSecretById_forVote = async (id) => {
-    const objectid_secret = typeof(id) === 'string' ? ObjectId(id) : id
-    const result = await secretColl.findOne({_id: objectid_secret})
+    const objectid_secret = idfier(id)
+    if(objectid_secret.error) return objectid_secret
+    // const objectid_secret = typeof(id) === 'string' ? ObjectId(id) : id
+    const result = await secretColl.findOne({_id: objectid_secret}, {projection: projectionforsecrets})
     const {_id, __v, ...toedit} = result
     return toedit
   }
   
   const updateSecret = async (id, newData) => {
-    const objectid_secret = typeof(id) === 'string' ? ObjectId(id) : id
+    const objectid_secret = idfier(id)
+    if(objectid_secret.error) return objectid_secret
+    // const objectid_secret = typeof(id) === 'string' ? ObjectId(id) : id
     const result = await secretColl.updateOne({_id: objectid_secret}, {$set: newData})
     if(!result.acknowledged) return {error: 'unkown fail to update secret'}
     if(!result.matchedCount) return {error: 'secret to update not found'}
     if(!result.modifiedCount) return {error: 'secret found, fail to update'}
     return result
   }
+  
+  const bookmarkaSecret = async (secretId, userid) => {
+    const objectid_user = idfier(userid)
+    if(objectid_user.error) return objectid_user
+    // const objectid_user = typeof (userid) === 'string' ? ObjectId(userid) : userid
+    const objectid_secret = idfier(secretId)
+    if(objectid_secret.error) return objectid_secret
+    // const objectid_secret = typeof (secretId) === 'string' ? ObjectId(secretId) : secretId
+    
+    // const result = await userColl.updateOne({_id: objectid_user}, {$push: {savedsecrets: objectid_secret}})
+    const result = await secretColl.updateOne({_id: objectid_secret}, {$push: {bookmarkedBy: objectid_user}})
+    if(!result.acknowledged) return {error: 'unkown fail to bookmark the secret'}
+    if(!result.matchedCount) return {error: 'secret id not found'}
+    if(!result.modifiedCount) return {error: 'secret found, fail to update'}
+    return result
+  }
+  
+  const removeBookmark = async (secretId, userid) => {
+    const objectid_user = idfier(userid)
+    if(objectid_user.error) return objectid_user
+    // const objectid_user = typeof (userid) === 'string' ? ObjectId(userid) : userid
+    const objectid_secret = idfier(secretId)
+    if(objectid_secret.error) return objectid_secret
+    // const objectid_secret = typeof (secretId) === 'string' ? ObjectId(secretId) : secretId
+    // const result = await userColl.updateOne({ _id: objectid_user }, { $set: { savedsecrets: objectid_secret } })
+    const result = await secretColl.updateOne({_id: objectid_secret}, {$pull: {bookmarkedBy: objectid_user}})
+    if (!result.acknowledged) return { error: 'unkown fail to bookmark the secret' }
+    if (!result.matchedCount) return { error: 'user id not found' }
+    if (!result.modifiedCount) return { error: 'user found, fail to update' }
+    return result
+  }
+  
+  const getBookmarked = async (userid, idindex, limit, back) => {
+    const objectid_user = idfier(userid)
+    if(objectid_user.error) return objectid_user
+    // const objectid_user = typeof(userid) === 'string' ? ObjectId(userid) : userid
+    let result
+    if(idindex) {
+      const objectid_index = idfier(idindex)
+      if(objectid_index.error) return objectid_index
+      // const objectid_index = typeof (idindex) === 'string' ? ObjectId(idindex) : idindex
+      if(back) {
+        result = await secretColl.find({bookmarkedBy: objectid_user, _id: {$gt: objectid_index}}, {limit: limit, sort: {_id: -1}, projection: projectionforsecrets}).toArray()
+      } else {
+        result = await secretColl.find({bookmarkedBy: objectid_user, _id: {$lt: objectid_index}}, {limit: limit, sort: {_id: -1}, projection: projectionforsecrets}).toArray()
+      }
+    } else {
+      result = await secretColl.find({bookmarkedBy: objectid_user}, {limit: limit, sort: {_id: -1}, projection: projectionforsecrets}).toArray()
+    }
+    if(!result) return {error: 'fail to get bookmarked secrets'}
+
+    let nextbutton = false
+    if(result.length >= limit) {
+      const nextSecret = await secretColl.findOne({bookmarkedBy: objectid_user, _id: {$lt: result[limit - 1]._id}}, {projection: {creatorId: 1}})
+      if(nextSecret) nextbutton = true
+    }
+    let backbutton = false
+    const prevSecret = await secretColl.findOne({bookmarkedBy: objectid_user, _id: {$gt: result[0]._id}}, {projection: {creatorId: 1}})
+    if(prevSecret) backbutton = true
+    return {result: result, nextbutton, backbutton}
+  }
+
+  const updateComment = async (update, content, commIndex, secretid, userid) => {
+    let result, modifier
+    const objsecretid = idfier(secretid)
+    if(!objsecretid) return {error: 'secret id is empty'}
+    if(objsecretid.error) return objsecretid
+    if(update === 'save') {
+      const objuserid = idfier(userid)
+      if(!objuserid) return {error: 'user id is empty'}
+      if(objuserid.error) return objuserid
+      modifier = {$push: {comment: {content: content, vote: 0, creator: objuserid}}}
+    }
+    if(['up', 'down'].includes(update)) modifier = {$inc: {[`comment.${commIndex}.vote`]: update === 'up' ? 1 : -1}}
+    if(['save', 'up', 'down'].includes(update)) {
+      result = await secretColl.updateOne({_id: objsecretid}, modifier)
+      if (!result.acknowledged) return { error: 'unkown fail' }
+      if (!result.matchedCount) return { error: 'secret not found' }
+      if (!result.modifiedCount) return { error: 'secret found, fail to update' }
+    }
+    
+    if(update === 'get') {
+      result = await secretColl.findOne({_id: objsecretid}, {projection: {comment: 1}})
+      if(result._id) result = !result.comment ? [] : result.comment
+    }
+    if(update === 'del') {
+      result = await secretColl.updateOne({_id: objsecretid}, {$set: {[`comment.${commIndex}`]: 'x'}})
+      if(result.acknowledged && result.matchedCount && result.modifiedCount) {
+        result = await secretColl.updateOne({_id: objsecretid}, {$pull: {comment: 'x'}})
+        if (!result.acknowledged) return { error: 'unkown fail' }
+        if (!result.matchedCount) return { error: 'secret not found' }
+        if (!result.modifiedCount) return { error: 'secret found, fail to delete' }
+      } else {
+        return {error: 'fail to update comment for deletion'}
+      }
+    }
+    return result
+  }
 
   return {
     insertOneSecret, deleteSecret, getSecret_forhomepage, getPaginationByID, getusersecret_byN,
-    getusersecret_byIDIndex, getSecretById_forVote, updateSecret
+    getusersecret_byIDIndex, getSecretById_forVote, updateSecret, bookmarkaSecret, removeBookmark, getBookmarked,
+    updateComment
   }
 }
 module.exports = secretUtils

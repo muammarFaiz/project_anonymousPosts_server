@@ -16,8 +16,8 @@ router.post('/profileImg', verifyToken, async (req, res) => {
   res.send('ok')
 })
 
-router.get('/userimage', verifyToken, (req, res) => {
-  const imageInfo = req.theUserDoc.profileImage
+router.get('/userimage', verifyToken, async (req, res) => {
+  const imageInfo = await utils.getImage(req.theUserDoc._id)
   let buffer1
   try {
     buffer1 = imageInfo.buffer.toString('base64')
@@ -26,6 +26,17 @@ router.get('/userimage', verifyToken, (req, res) => {
   }
   
   res.json({mimetype: imageInfo.mimetype, base64: buffer1})
+})
+
+router.post('/userinfopublic', async (req, res) => {
+  console.log(req.body)
+  const result = await utils.getUserPublicInfo(req.body.userid)
+  res.json(result)
+})
+
+router.post('/getimgname', async (req, res) => {
+  const result = await utils.getimgandusername(req.body.idarr)
+  res.json(result)
 })
 
 module.exports = router

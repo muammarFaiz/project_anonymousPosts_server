@@ -1,4 +1,5 @@
 const { ObjectId } = require('mongodb')
+const sharp = require('sharp')
 
 const userColl = require('../mongodbnativeconfig').collection('users')
 const paginationColl = require('../mongodbnativeconfig').collection('paginations')
@@ -22,7 +23,7 @@ const userUtils = () => {
    * @returns null if user not found, return the user doc if found
    */
   const findByEmail = async (email) => {
-    const res = await userColl.findOne({email: email})
+    const res = await userColl.findOne({email: email}, {projection: {savedsecrets: 0, profileImage: 0}})
     return res
   }
 
@@ -57,7 +58,7 @@ const userUtils = () => {
    * @returns null if there is no user with that jwt token, return the user doc if there is any
    */
   const findByJwt = async (jwt) => {
-    const res = await userColl.findOne({jwt_token: jwt})
+    const res = await userColl.findOne({jwt_token: jwt}, {projection: {savedsecrets: 0, profileImage: 0}})
     return res
   }
 
@@ -80,7 +81,7 @@ const userUtils = () => {
   const findUserById = async (id) => {
     let idobj = id
     if(typeof(id) === 'string') idobj = ObjectId(id)
-    const res = await userColl.findOne({_id: idobj})
+    const res = await userColl.findOne({_id: idobj}, {projection: {savedsecrets: 0, profileImage: 0}})
     return res
   }
 
@@ -97,9 +98,54 @@ const userUtils = () => {
     if(!res.acknowledged || !res.modifiedCount) return {error: 'saving image to db failed'}
     return res
   }
+  
+  const updateUserBio = async (newbio, userid) => {
+    const idobj = typeof(userid) === 'string' ? ObjectId(userid) : userid
+    const res = await userColl.updateOne({_id: idobj}, {$set: {bio: newbio}})
+    if(!res.acknowledged || !res.modifiedCount) return {error: 'saving bio to db failed'}
+    return res
+  }
+  
+  const getImage = async (userid) => {
+    const idobj = typeof(userid) === 'string' ? ObjectId(userid) : userid
+    const res = await userColl.findOne({_id: idobj}, {projection: {profileImage: 1}})
+    if(!res) return {error: 'fail to find the user image'}
+    return res.profileImage
+  }
+  
+  const getimgandusername = async (idarr) => {
+    let objarr = []
+    if(Array.isArray(idarr)) {
+      idarr.forEach(idstr => {
+        const idobj = typeof(idstr) === 'string' ? ObjectId(idstr) : idstr
+        objarr.push(idobj)
+      });
+    }
+    let res
+    if(objarr.length > 0) res = await userColl.find({_id: {$in: objarr}}, {projection: {profileImage: 1, username: 1}}).toArray()
+    if(!res || !Array.isArray(res)) return {error: 'fail to get images'}
+    if(res.length > -1) {
+      const imporvedImgArr = res.map(async doc => {
+        const buff = doc.profileImage.buffer
+        const newimg = await sharp(doc.profileImage.buffer.buffer).resize(50, 50).webp().toBuffer()
+        let dic = doc
+        dic.profileImage.buffer = newimg.toString('base64')
+        return dic
+      })
+      return Promise.all(imporvedImgArr)
+    }
+  }
+
+  const getUserPublicInfo = async (userid) => {
+    const useridobj = typeof(userid) === 'string' ? ObjectId(userid) : userid
+    const result = await userColl.findOne({_id: useridobj}, {projection: {username: 1, profileImage: 1, bio:  1}})
+    if(result._id) return result
+    return {error: 'fail to get the user info'}
+  }
 
   return {
-    addToken, findByEmail, insertNewUser, findByJwt, findAndRemoveJWT, findUserById, changeUsername, saveImg
+    addToken, findByEmail, insertNewUser, findByJwt, findAndRemoveJWT, findUserById, changeUsername, saveImg,
+    updateUserBio, getImage, getimgandusername, getUserPublicInfo
   }
 }
 

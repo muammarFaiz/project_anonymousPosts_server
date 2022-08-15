@@ -182,4 +182,34 @@ router.get('/vote', verifyToken, async (req, res) => {
   return res.send('ok')
 })
 
+router.post('/bookmarksecret', verifyToken, async (req, res) => {
+  console.log(req.body)
+  console.log(req.theUserDoc._id)
+  const result = await utils.bookmarkaSecret(req.body.secretid, req.theUserDoc._id)
+  console.log(result);
+  if(result.error) return res.json(result)
+  return res.send('ok')
+})
+
+router.post('/removebookmark', verifyToken, async (req, res) => {
+  const result = await utils.removeBookmark(req.body.secretid, req.theUserDoc._id)
+  console.log(result)
+  if(result.error) return res.json(result)
+  return res.send('ok')
+})
+
+router.post('/getbookmarks', verifyToken, async (req, res) => {
+  const result = await utils.getBookmarked(req.theUserDoc._id, req.body.startfrom, req.body.limit, req.body.back)
+  if(result.error) return res.json(result)
+  if(result.length < 1) return res.send('empty')
+  return res.json({result: result.result, arrayOfPages: 'bookmark', nextbutton: result.nextbutton, backbutton: result.backbutton})
+})
+
+router.post('/comment', verifyToken, async (req, res) => {
+  const result = await utils.updateComment(req.body.update, req.body.content, req.body.commindex, req.body.secretid, req.theUserDoc._id)
+  if(result.error) return res.json(result)
+  if(req.body.update === 'get') return res.json(result)
+  return res.send('ok')
+})
+
 module.exports = router
