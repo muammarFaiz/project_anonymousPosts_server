@@ -8,6 +8,7 @@ const createDOMPurify = require('dompurify')
 const {JSDOM} = require('jsdom')
 const multer = require('multer')
 const utils = require('./secretUtils')()
+const userUtils = require('../user/userUtils')()
 
 const c = console.log
 const window = new JSDOM('').window
@@ -20,7 +21,7 @@ router.post('/postsecret',
   //   // error
   //   body('content').isLength({min: 1, max: 10}).withMessage('content length invalid')
   // ],
-  verifyToken, upload.single('audiobuffer'), async (req, res) => {
+  verifyToken, userUtils.countdoc('secret'), upload.single('audiobuffer'), async (req, res) => {
     // const errors = validationResult(req)
     // if(!errors.isEmpty()) {
     //   return res.json({errors: errors.array()})

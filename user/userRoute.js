@@ -48,7 +48,7 @@ router.post('/login', passport.authenticate('local'), (req, res, next) => {
   }
 }, signJWT)
 
-router.post('/register',
+router.post('/register', utils.countdoc('user'),
 // the measurements is not ideal, it is just for testing and practice
 body('username').isAlphanumeric(undefined, {ignore: ' -_'}).isLength({min: 2, max: 15}),
 body('email').isEmail(),

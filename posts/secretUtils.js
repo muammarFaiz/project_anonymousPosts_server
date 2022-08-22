@@ -206,8 +206,10 @@ const secretUtils = () => {
       if(nextSecret) nextbutton = true
     }
     let backbutton = false
-    const prevSecret = await secretColl.findOne({bookmarkedBy: objectid_user, _id: {$gt: result[0]._id}}, {projection: {creatorId: 1}})
-    if(prevSecret) backbutton = true
+    if(result.length > 1) {
+      const prevSecret = await secretColl.findOne({bookmarkedBy: objectid_user, _id: {$gt: result[0]._id}}, {projection: {creatorId: 1}})
+      if(prevSecret) backbutton = true
+    }
     return {result: result, nextbutton, backbutton}
   }
 

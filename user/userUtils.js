@@ -3,6 +3,7 @@ const sharp = require('sharp')
 
 const userColl = require('../mongodbnativeconfig').collection('users')
 const paginationColl = require('../mongodbnativeconfig').collection('paginations')
+const secretColl = require('../mongodbnativeconfig').collection('secrets')
 
 const userUtils = () => {
   /**
@@ -109,7 +110,7 @@ const userUtils = () => {
   const getImage = async (userid) => {
     const idobj = typeof(userid) === 'string' ? ObjectId(userid) : userid
     const res = await userColl.findOne({_id: idobj}, {projection: {profileImage: 1}})
-    if(!res) return {error: 'fail to find the user image'}
+    if(!res.profileImage) return {error: 'fail to find the user image'}
     return res.profileImage
   }
   
@@ -143,9 +144,33 @@ const userUtils = () => {
     return {error: 'fail to get the user info'}
   }
 
+  const countdoc = (collection) => {
+    return async (req, res, next) => {
+      let result
+      if (collection === 'secret') {
+        const userid = req.theUserDoc._id
+        const useridobj = typeof(userid) === 'string' ? ObjectId(userid) : userid
+        result = await secretColl.countDocuments({creatorId: useridobj})
+        if(typeof(result) === 'number') {
+          result < 50 ? next() : res.json({error: 'max secrets limit has been reached'})
+        } else {
+          res.json({error: 'server error, counting the docs'})
+        }
+      } else if (collection === 'user') {
+        result = await userColl.countDocuments()
+        if(typeof(result) === 'number') {
+          result < 40 ? next() : res.json({error: 'max users limit has been reached'})
+        } else {
+          res.json({error: 'server error, counting the docs'})
+        }
+      }
+      console.log(result)
+    }
+  }
+
   return {
     addToken, findByEmail, insertNewUser, findByJwt, findAndRemoveJWT, findUserById, changeUsername, saveImg,
-    updateUserBio, getImage, getimgandusername, getUserPublicInfo
+    updateUserBio, getImage, getimgandusername, getUserPublicInfo, countdoc
   }
 }
 
