@@ -24,8 +24,11 @@ router.get('/userimage', verifyToken, async (req, res) => {
   } catch (error) {
     console.log(error);
   }
-  
-  res.json({mimetype: imageInfo.mimetype, base64: buffer1})
+  if(buffer1) {
+    res.json({mimetype: imageInfo.mimetype, base64: buffer1})
+  } else {
+    res.send('none')
+  }
 })
 
 router.post('/userinfopublic', async (req, res) => {
